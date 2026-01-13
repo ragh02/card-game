@@ -1,0 +1,5 @@
+kdf_iterations: 100000
+obfuscate: {}
+password: {}
+userpass:
+  parabolabola: 5484a860542926dfc1b56e6625c8356c732da50509682b88b85b9ff2e6cf703e;db0db660e511c044456c5d50adb9a0c3;ed33ea4a2bf4457d247842cc19a858c1558115da6390fca08104da9c1e168a39
