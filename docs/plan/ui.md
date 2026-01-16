@@ -1,3 +1,6 @@
+---
+index: 2
+---
 # UI Design
 
 ## Screens

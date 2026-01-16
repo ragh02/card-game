@@ -1,3 +1,6 @@
+---
+index: 3
+---
 # Data design
 ## Main database
 **game.db** - stores all game information in a SQLite database

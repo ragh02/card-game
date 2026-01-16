@@ -1,0 +1,9 @@
+authors:
+  e2:
+    name: Evil Exams
+    description: Creator
+    avatar: assets/blog/authors/e2.png
+  polysolver:
+    name: Polynomial Solver
+    description: Creator
+    avatar: assets/blog/authors/polysolver.png
