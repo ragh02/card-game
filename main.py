@@ -8,6 +8,7 @@ from libs.col import *
 import os
 import sys
 import yaml
+import hashlib
 
 
 # Initialise the SQLite DB and create tables if they don't exist
@@ -36,10 +37,10 @@ def init_db(db_name):
     conn.close()
 
 # Execute an SQL query and return a result
-def execute_query(query):
+def execute_query(query,params):
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
-    c.execute(query)
+    c.execute(query,params)
     result = c.fetchall()
     conn.close()
     return result
@@ -64,5 +65,6 @@ def create_config_file(filepath="config.yml", config_dict=None):
         yaml.dump(config_dict, f)
 
 # Does authentication. Reads the global config file
-def do_authentication(username, password, config_dict):
-    if
+def do_authentication(username, password, db_file):
+    pw_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    users = execute_query("SELECT password FROM users WHERE username = ?",username)

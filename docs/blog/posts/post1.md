@@ -21,6 +21,17 @@ Please solve the quadratic equation
 <!-- more -->
 
 $$x^{2}-2x+1=0$$
+
+test
+$$
+x = \frac{-b\pm\sqrt{b^{2}-4ac}}{2a}
+$$
+
+$$
+x={\frac{-b\pm{\sqrt{b^{2}-4a c\ }}}{2a}}
+$$
+
+
 <?quiz?>
 question: SOLVE THE EQUATION
 answer: $-1$
