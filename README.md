@@ -1,1 +1,1 @@
-Hello
+[License](license.md)
