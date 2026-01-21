@@ -12,3 +12,4 @@ class col:
     end = '\033[0m'
     bold = '\033[1m'
     underline = '\033[4m'
+    gray = '\033[2m'
