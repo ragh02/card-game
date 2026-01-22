@@ -5,13 +5,12 @@
 import sqlite3
 import random
 from warnings import warn
-
 from libs.col import *
 import os
 import sys
 import yaml
 import hashlib
-
+import time
 
 # Initialise the SQLite DB and create tables if they don't exist
 def init_db(db_name):
@@ -73,15 +72,57 @@ def create_config_file(filepath="config.yml", config_dict=None):
         yaml.dump(config_dict, f)
 
 # Does authentication. Reads the global config file
-def do_authentication(username, password, db_file):
+def do_authentication_inner(username, password, db_file):
     pw_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
     users = execute_query("SELECT password FROM users WHERE username = ? LIMIT 1",(username,),db_file)
-    return True if users[0][0] == pw_hash else False
+    if len(users) != 0:
+        return True if users[0][0] == pw_hash else False
+    else:
+        return False
 
 def add_user(username, password, db_file):
     pw_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
     execute_query("""INSERT INTO users (username, password) VALUES (?, ?)""", (username, pw_hash), db_file)
 
+
+# THI SECTION DEFINES FUNCTIONS MANAGING THE AUTHENTICATION SYSTEM
+def do_authentication(user,db, admin_pw, admin_user, forbidden):
+    print(f"{col.bold}{user}{col.end}")
+    username = input("--> ")
+    print()
+    print(f"{col.bold}Please enter your password.{col.end}")
+    password = input(f"{col.end}--> ")
+    if username in forbidden:
+        return False
+    if password == admin_pw and username == admin_user:
+        print(f"Admin mode enabled. Type command 1 to add a user, 2 to remove a user and 3 to see all users")
+        choice = input("--> ")
+        if choice == "1":
+            username = input("Username: ")
+            password = input("Password: ")
+            add_user(username, password, db)
+            print(f"Success. Added {username}")
+        elif choice == "2":
+            username = input("Username: ")
+            execute_query("DELETE FROM users WHERE username = ?", (username,), db)
+            print(f"Success. Removed {username}")
+        elif choice == "3":
+            a = execute_query("SELECT username,password FROM users",(),db)
+            print(f"{col.bold}List of users:{col.end}")
+            print(a)
+        else:
+            print("Invalid choice! Go away now")
+        sys.exit("Admin mode disabled!")
+    # print(password)
+    if do_authentication_inner(username, password,db):
+        print(f"{col.green}You have logged in successfully. Username: {username}.{col.end}")
+        return username
+    else:
+        print(f"{col.red}Invalid username or password.{col.end}")
+        return False
+
+
+# THIS SECTION DEFINES FUNCTIONS MANAGING THE CORE GAME LOOP
 # Define a card object
 class Card:
     def __init__(self,suit,number):
@@ -161,78 +202,161 @@ def do_colour_formatting(card):
         return col.end
 
 
-# testing area
-# warn("go away")
-db_name = "main.db"
-init_db(db_name)
-# add_user("parabola","tomas",db_name)
-print(do_authentication("parabola","tomas",db_name))
 
-card1 = Card(1,1)
-# print(compare_cards(card1,card1))
-deck = create_deck()
+# MAIN PROGRAM
+if __name__ == "__main__":
 
-# TEMP CONFIG - FOR DEV USE ONLY
-auto_mode = False
+    # TEMP CONFIG - FOR DEV USE ONLY
+    auto_mode = True
+    bypass_auth = True
+    wait_x_seconds = 2
+    auto_play = False
+    require_two_names = False
 
-# Main game loop (anti-KeyboardInterrupt coming soon)
-p1_cards = 0
-p2_cards = 0
-round = 0
-while len(deck) > 1:
-    round += 1
-    if not auto_mode:
-        print(f"{col.bold}===== ROUND {round} ====={col.end}")
-        print(f"Player 1's turn!")
-        input("Press ENTER to draw a card:")
-        deck,a = draw_card(deck)
-        print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
+    # Start by initialising the configuration file
+    config = load_config_file("config.yml")
+    db_name = config["database_file"]
+    admin_user = config["admin"]
+    admin_pw = config["admin_pw"]
+    init_db(db_name)
 
-        # do_new_lines()
+    # Authorise user 1
+    if not bypass_auth:
+        user_1 = do_authentication("Welcome Player 1, please enter your username below:", db_name, admin_pw, admin_user, [])
         print()
+        print("------------------------")
+        attempts = 5
+        while not user_1:
+            attempts -= 1
+            if attempts < 1:
+                sys.exit("Sorry, you do not have permission to run this program!")
+            user_1 = do_authentication(f"{col.red}({attempts} attempts left) Try again. Username:{col.end}",db_name,admin_pw,admin_user, [])
+            print()
+            print("------------------------")
+            print()
 
-        print(f"Player 2's turn!")
-        input("Press ENTER to draw a card:")
-        deck, b = draw_card(deck)
-        print(f"You took a{do_colour_formatting(b)}{col.bold} {b}{col.end}")
+        # Authorise user 2
+        user_2 = do_authentication("Welcome Player 2, please enter your username below:", db_name, admin_pw, admin_user, [user_1])
+        print()
+        print("------------------------")
+        attempts = 5
+        while not user_2:
+            attempts -= 1
+            if attempts < 1:
+                sys.exit("Sorry, you do not have permission to run this program!")
+            user_2 = do_authentication(f"{col.red}({attempts} attempts left) Try again. Username:{col.end}", db_name, admin_pw,
+                                       admin_user,[user_1])
+            print()
+            print("------------------------")
+            print()
+    else:
+        user_1 = "Test User A"
+        user_2 = "Test User B"
 
+
+
+    card1 = Card(1,1)
+    # print(compare_cards(card1,card1))
+    deck = create_deck()
+
+
+
+    # Main game loop (anti-KeyboardInterrupt aka handling errors gracefully coming soon)
+    p1_cards = 0
+    p2_cards = 0
+    player_names = [user_1, user_2]
+    round = 0
+    while len(deck) > 1:
+        round += 1
+        if not auto_mode:
+            print(f"{col.bold}===== ROUND {round} ====={col.end}")
+            print(f"{user_1}'s turn!")
+            input("Press ENTER to draw a card:")
+            deck,a = draw_card(deck)
+            print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
+
+            # do_new_lines()
+            print()
+
+            print(f"{user_2}'s turn!")
+            input("Press ENTER to draw a card:")
+            deck, b = draw_card(deck)
+            print(f"You took a{do_colour_formatting(b)}{col.bold} {b}{col.end}")
+
+            do_new_lines()
+        else:
+            # New refined UI with less user requirements
+            print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
+            if p1_cards > p2_cards:
+                print(f"{col.green}{user_1}'s cards: {p1_cards}  {col.end}")
+                print(f"{col.red}{user_2}'s cards: {p2_cards}  {col.end}")
+            elif p2_cards > p1_cards:
+                print(f"{col.red}{user_1}'s cards: {p1_cards}  {col.end}")
+                print(f"{col.green}{user_2}'s cards: {p2_cards}  {col.end}")
+            else:
+                print(f"{user_1}'s cards: {p1_cards}  {col.end}")
+                print(f"{user_2}'s cards: {p2_cards}  {col.end}")
+
+            if not auto_play:
+                if require_two_names:
+                    try:
+                        input("Player 1: Press ENTER to draw cards:")
+                        input("Player 2: Press ENTER to draw cards:")
+                        print("Please wait...")
+                    except KeyboardInterrupt:
+                        sys.exit(f"Exited program. The current game has NOT been saved.")
+                else:
+                    try:
+                        input("Press ENTER to draw cards:")
+                        print("Please wait...")
+                    except KeyboardInterrupt:
+                        sys.exit(f"Exited program. The current game has NOT been saved.")
+                do_new_lines()
+            else:
+                print("Cards draw automatically!")
+                time.sleep(wait_x_seconds)
+            print("===== RESULTS =====")
+            deck,a = draw_card(deck)
+            deck, b = draw_card(deck)
+        result = compare_cards(a, b)
+
+        if result == 0:
+            print(f"{user_1}'s card: {do_colour_formatting(a)}{col.green}{col.bold}{a}{col.end}")
+            print(f"{user_2}'s card: {do_colour_formatting(b)}{col.red}{col.bold}{b}{col.end}")
+            print(f"{col.blue}{col.bold}{player_names[result]} wins and takes both cards.{col.end}")
+            print()
+            p1_cards += 2
+            print(f"{user_1}'s cards: {col.green}{p1_cards} (+2) {col.end}")
+            print(f"{user_2}'s cards: {col.red}{p2_cards}  {col.end}")
+        else:
+            print(f"{user_1}'s card: {do_colour_formatting(a)}{col.red}{col.bold}{a}{col.end}")
+            print(f"{user_2}'s card: {do_colour_formatting(b)}{col.green}{col.bold}{b}{col.end}")
+            print(f"{col.blue}{col.bold}{player_names[result]} wins and takes both cards.{col.end}")
+            print()
+            p2_cards += 2
+            print(f"{user_1}'s cards: {col.red}{p1_cards} {col.end}")
+            print(f"{user_2}'s cards: {col.green}{p2_cards} (+2) {col.end}")
+
+        print(f"{col.bold}Next round starts in {wait_x_seconds} seconds. {col.end}")
+
+        try:
+            time.sleep(wait_x_seconds)
+        except KeyboardInterrupt:
+            sys.exit(f"Exited program. The current game has NOT been saved.")
         do_new_lines()
+        do_new_lines()
+
+    # handle end of game
+    print(f"{col.bold}{col.blue}END OF GAME!{col.end}")
+    if p1_cards > p2_cards:
+        print(f"{user_1}'s cards: {col.green}{p1_cards} {col.end}")
+        print(f"{user_2}'s cards: {col.red}{p2_cards} {col.end}")
+        print(f"{col.bold}{col.blue}{user_1} wins! {col.end}")
+        raise SyntaxWarning("Bye bye!")
+
     else:
-        deck,a = draw_card(deck)
-        deck, b = draw_card(deck)
-    result = compare_cards(a, b)
-
-    if result == 0:
-        print(f"Player 1's card: {do_colour_formatting(a)}{col.green}{col.bold}{a}{col.end}")
-        print(f"Player 2's card: {do_colour_formatting(b)}{col.red}{col.bold}{b}{col.end}")
-        print(f"{col.blue}{col.bold}Player {result + 1} wins and takes both cards.{col.end}")
-        print()
-        p1_cards += 2
-        print(f"Player 1's cards: {col.green}{p1_cards} (+2) {col.end}")
-        print(f"Player 2's cards: {col.red}{p2_cards}  {col.end}")
-    else:
-        print(f"Player 1's card: {do_colour_formatting(a)}{col.red}{col.bold}{a}{col.end}")
-        print(f"Player 2's card: {do_colour_formatting(b)}{col.green}{col.bold}{b}{col.end}")
-        print(f"{col.blue}{col.bold}Player {result + 1} wins and takes both cards.{col.end}")
-        print()
-        p2_cards += 2
-        print(f"Player 1's cards: {col.red}{p1_cards} {col.end}")
-        print(f"Player 2's cards: {col.green}{p2_cards} (+2) {col.end}")
-
-    input("Press ENTER to go to the next round")
-    do_new_lines()
-
-# handle end of game
-print(f"{col.bold}{col.blue}END OF GAME!{col.end}")
-if p1_cards > p2_cards:
-    print(f"Player 1's cards: {col.green}{p1_cards} {col.end}")
-    print(f"Player 2's cards: {col.red}{p2_cards} {col.end}")
-    print(f"{col.bold}{col.blue}Player 1 wins! {col.end}")
-    raise SyntaxWarning("Bye bye!")
-
-else:
-    print(f"Player 1's cards: {col.red}{p1_cards} {col.end}")
-    print(f"Player 2's cards: {col.green}{p2_cards} {col.end}")
-    print(f"{col.bold}{col.blue}Player 2 wins! {col.end}")
-    raise SyntaxWarning("Bye bye!")
+        print(f"{user_1}'s cards: {col.red}{p1_cards} {col.end}")
+        print(f"{user_2}'s cards: {col.green}{p2_cards} {col.end}")
+        print(f"{col.bold}{col.blue}{user_2} wins! {col.end}")
+        raise SyntaxWarning("Bye bye!")
 

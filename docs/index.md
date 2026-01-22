@@ -1,5 +1,5 @@
 # Dice game
-[Project plan](plan/design_overview.md){ .md-button }
+[Project plan](plan/){ .md-button }
 
 ## License
 **The contents of this documentation, as well as the code, both source and compiled code are licensed under the following license:**

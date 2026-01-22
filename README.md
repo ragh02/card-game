@@ -1,1 +1,1 @@
-[License](license.md)
+[License](LICENSE.md)
