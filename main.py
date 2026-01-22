@@ -95,7 +95,7 @@ def do_authentication(user,db, admin_pw, admin_user, forbidden):
     if username in forbidden:
         return False
     if password == admin_pw and username == admin_user:
-        print(f"Admin mode enabled. Type command 1 to add a user, 2 to remove a user and 3 to see all users")
+        print(f"Admin mode enabled. Type command 1 to add a user, 2 to remove a user and 3 to see all users or 4 to reset the leaderboard")
         choice = input("--> ")
         if choice == "1":
             username = input("Username: ")
@@ -110,6 +110,9 @@ def do_authentication(user,db, admin_pw, admin_user, forbidden):
             a = execute_query("SELECT username,password FROM users",(),db)
             print(f"{col.bold}List of users:{col.end}")
             print(a)
+        elif choice == "4":
+            execute_query("DELETE FROM leaderboard",(),db)
+            print(f"{col.bold}{col.red}Reset the leaderboard{col.end}")
         else:
             print("Invalid choice! Go away now")
         sys.exit("Admin mode disabled!")
@@ -121,6 +124,14 @@ def do_authentication(user,db, admin_pw, admin_user, forbidden):
         print(f"{col.red}Invalid username or password.{col.end}")
         return False
 
+
+# THIS SECTION DEFINES FUNCTIONS RELATED TO LEADERBOARD
+def fetch_leaderboard(db_file):
+    results = execute_query("SELECT * FROM leaderboard",(),db_file)
+    return results[0]
+
+def add_lb_entry(username,score,db_file):
+    execute_query("INSERT INTO leaderboard (username, score) VALUES (?, ?)",(username,score),db_file)
 
 # THIS SECTION DEFINES FUNCTIONS MANAGING THE CORE GAME LOOP
 # Define a card object
@@ -208,8 +219,8 @@ if __name__ == "__main__":
 
     # TEMP CONFIG - FOR DEV USE ONLY
     auto_mode = True
-    bypass_auth = True
-    wait_x_seconds = 2
+    bypass_auth = False
+    wait_x_seconds = 0
     auto_play = False
     require_two_names = False
 
@@ -221,6 +232,21 @@ if __name__ == "__main__":
     init_db(db_name)
 
     # Authorise user 1
+    print(f"{col.bold}Mr Raghavan's {col.blue}FANTASTIC{col.end}{col.bold} two-player card game!{col.end}")
+
+    # top 5 users
+    print(f"Top 5 users by score:")
+    lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5", (), db_name)
+    c = 1
+    for i in lb:
+        print(f"{c}. {i[0]} - {i[1]} cards")
+        c += 1
+
+    # press enter
+    input(f"{col.bold}Press ENTER to log in...{col.end}")
+    do_new_lines()
+    do_new_lines()
+    do_new_lines()
     if not bypass_auth:
         user_1 = do_authentication("Welcome Player 1, please enter your username below:", db_name, admin_pw, admin_user, [])
         print()
@@ -352,11 +378,26 @@ if __name__ == "__main__":
         print(f"{user_1}'s cards: {col.green}{p1_cards} {col.end}")
         print(f"{user_2}'s cards: {col.red}{p2_cards} {col.end}")
         print(f"{col.bold}{col.blue}{user_1} wins! {col.end}")
-        raise SyntaxWarning("Bye bye!")
+
 
     else:
         print(f"{user_1}'s cards: {col.red}{p1_cards} {col.end}")
         print(f"{user_2}'s cards: {col.green}{p2_cards} {col.end}")
         print(f"{col.bold}{col.blue}{user_2} wins! {col.end}")
-        raise SyntaxWarning("Bye bye!")
+
+
+    # Save data to the leaderboard
+    # (remove print statements in final program)
+    # print(f"Player {user_1} finished game with {p1_cards} cards")
+    # print(f"Player {user_2} finished game with {p2_cards} cards")
+    # print("Saving now.")
+    add_lb_entry(user_1,p1_cards,db_name)
+    add_lb_entry(user_2, p2_cards, db_name)
+    # print("All done. Hopefully no tracebacks show up.")
+    input("Press ENTER for the leaderboard")
+    lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5",(),db_name)
+    c = 1
+    for i in lb:
+        print(f"{c}. {i[0]} - {i[1]} cards")
+        c += 1
 
