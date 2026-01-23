@@ -201,8 +201,9 @@ def draw_card(deck):
 
 def do_new_lines():
     # print a bunch of new lines since os system clear is broken in pycharm
-    for i in range(4):
-        print()
+    # for i in range(4):
+    #     print()
+    os.system("clear")
 
 def do_colour_formatting(card):
     if card.suit == 0:
@@ -218,11 +219,11 @@ def do_colour_formatting(card):
 if __name__ == "__main__":
 
     # TEMP CONFIG - FOR DEV USE ONLY
-    auto_mode = True
+    auto_mode = False
     bypass_auth = False
-    wait_x_seconds = 0
+    wait_x_seconds = 3
     auto_play = False
-    require_two_names = False
+    require_two_names = True
 
     # Start by initialising the configuration file
     config = load_config_file("config.yml")
@@ -231,42 +232,72 @@ if __name__ == "__main__":
     admin_pw = config["admin_pw"]
     init_db(db_name)
 
-    # Authorise user 1
-    print(f"{col.bold}Mr Raghavan's {col.blue}FANTASTIC{col.end}{col.bold} two-player card game!{col.end}")
+    # Print welcome message
+    print("===============================================")
+    print(f"{col.bold}Mr Raghavan's {col.blue}FANTASTIC{col.end}{col.bold} two-player card game! {col.end}")
+    print(f"{col.bold}==================== RULES ====================")
+    print(f"{col.end}Each player takes turns in taking the top card from")
+    print("the deck. Then, the cards are compared using the")
+    print("following rules. If the colours are different:")
+    print("* Red beats black")
+    print("* Yellow beats red")
+    print("* Black beats yellow")
+    print()
+    print("If the colours are the same, highest number wins.")
+    print("The player with the best card takes both.")
+    print(f"You want the {col.bold} most {col.end}number of cards.")
+    print("================== GOOD LUCK ==================")
+    try:
+        input("Press ENTER once you've read the rules...")
+    except KeyboardInterrupt:
+        sys.exit(f"{col.red}Game cancelled.")
+
+    do_new_lines()
 
     # top 5 users
-    print(f"Top 5 users by score:")
+    print(f"================= LEADERBOARD =================")
     lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5", (), db_name)
     c = 1
     for i in lb:
         print(f"{c}. {i[0]} - {i[1]} cards")
         c += 1
 
+
     # press enter
-    input(f"{col.bold}Press ENTER to log in...{col.end}")
+    print(f"===============================================")
+    try:
+        input("Press ENTER to log in...")
+    except KeyboardInterrupt:
+        sys.exit(f"{col.red}Game cancelled.")
     do_new_lines()
     do_new_lines()
     do_new_lines()
+
+    # Authorise user 1
     if not bypass_auth:
         user_1 = do_authentication("Welcome Player 1, please enter your username below:", db_name, admin_pw, admin_user, [])
         print()
-        print("------------------------")
+        os.system("clear")
+        # print("------------------------")
         attempts = 5
         while not user_1:
+            os.system("clear")
             attempts -= 1
             if attempts < 1:
                 sys.exit("Sorry, you do not have permission to run this program!")
             user_1 = do_authentication(f"{col.red}({attempts} attempts left) Try again. Username:{col.end}",db_name,admin_pw,admin_user, [])
             print()
-            print("------------------------")
+            # print("------------------------")
             print()
 
         # Authorise user 2
         user_2 = do_authentication("Welcome Player 2, please enter your username below:", db_name, admin_pw, admin_user, [user_1])
         print()
-        print("------------------------")
+        os.system("clear")
+        # print("------------------------")
         attempts = 5
         while not user_2:
+            os.system("clear")
             attempts -= 1
             if attempts < 1:
                 sys.exit("Sorry, you do not have permission to run this program!")
@@ -295,19 +326,21 @@ if __name__ == "__main__":
     while len(deck) > 1:
         round += 1
         if not auto_mode:
-            print(f"{col.bold}===== ROUND {round} ====={col.end}")
+            print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
             print(f"{user_1}'s turn!")
             input("Press ENTER to draw a card:")
             deck,a = draw_card(deck)
             print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
+            input("Press ENTER to continue...")
 
             # do_new_lines()
-            print()
-
+            os.system("clear")
+            print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
             print(f"{user_2}'s turn!")
             input("Press ENTER to draw a card:")
             deck, b = draw_card(deck)
             print(f"You took a{do_colour_formatting(b)}{col.bold} {b}{col.end}")
+            input("Press ENTER to continue...")
 
             do_new_lines()
         else:
@@ -363,10 +396,10 @@ if __name__ == "__main__":
             print(f"{user_1}'s cards: {col.red}{p1_cards} {col.end}")
             print(f"{user_2}'s cards: {col.green}{p2_cards} (+2) {col.end}")
 
-        print(f"{col.bold}Next round starts in {wait_x_seconds} seconds. {col.end}")
+        # print(f"{col.bold}Next round starts in {wait_x_seconds} seconds. {col.end}")
 
         try:
-            time.sleep(wait_x_seconds)
+            input(f"{col.bold}ENTER to go to the next round. {col.end}")
         except KeyboardInterrupt:
             sys.exit(f"Exited program. The current game has NOT been saved.")
         do_new_lines()
