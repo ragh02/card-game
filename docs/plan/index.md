@@ -16,8 +16,9 @@ Internally, red is represented by 0, yellow is 1 and black is 2
 - Player 2 is represented as "1"
 
 ## Assumptions
-- Cards are not dealt to players. Instead, they take the top card from the main deck.
+- 15 cards are dealt to each player. Cards are dealt by taking the top card from the main deck and dealing it normally to 
 - Player 1 always picks their card first, followed by Player 2.
+- Players are given the top 5 cards in the deck. They may pick one to play.
 - Authentication is by username and password (hashed) against a stored allow list.
 - Leaderboard file stores all winners while the top 5 (most cards) are displayed **at the end of a round**.
 

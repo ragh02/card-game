@@ -219,11 +219,11 @@ def do_colour_formatting(card):
 if __name__ == "__main__":
 
     # TEMP CONFIG - FOR DEV USE ONLY
-    auto_mode = False
+    auto_mode = True
     bypass_auth = False
-    wait_x_seconds = 3
+    wait_x_seconds = 0
     auto_play = False
-    require_two_names = True
+    require_two_names = False
 
     # Start by initialising the configuration file
     config = load_config_file("config.yml")
