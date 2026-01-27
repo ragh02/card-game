@@ -32,13 +32,11 @@ x={\frac{-b\pm{\sqrt{b^{2}-4a c\ }}}{2a}}
 $$
 
 
-<?quiz?>
-question: SOLVE THE EQUATION
-answer: $-1$
-answer: $0$
-answer-correct: $1$
-content:
-<p><strong>Correct!</strong><br>Now you can escape!
-</p>
-<?/quiz?>
+<quiz>
+SOLVE THE EQUATION
+- [ ] $-1$
+- [ ] $0$
+- [X] $1$
+Correct! Now you can escape!
+</quiz>
 [Escape](/nope){ data-preview }
