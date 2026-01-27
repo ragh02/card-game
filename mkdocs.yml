@@ -24,7 +24,7 @@ nav:
      
   
 
-copyright: Copyright &copy; 2026 E². All rights reserved.
+copyright: Copyright &copy; 2026 Harish Raghavan. All rights reserved.
 
 # Theme
 theme:
@@ -104,16 +104,7 @@ plugins:
   - mkdocs_quiz
   - glightbox
   - tags
-  - encryptcontent:
-      remember_keys: False
-      password_inventory:
-        secured:
-          tomas: jones
-      title_prefix: '[Locked] '
-      summary: 'Log in to Evil Exams'
-      placeholder: 'Password'
-      decryption_failure_message: 'Sorry, you do not have the required access privileges to access this page. Please contact the website administrator if you believe this is in error'
-      encryption_info_message: "This is a secured page. Please log in to access this page."
+
   
 
 # Extensions
