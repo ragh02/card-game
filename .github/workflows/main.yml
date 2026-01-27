@@ -26,4 +26,6 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - run: pip install mkdocs-material # (5)!
+      - run: pip install mkdocs-quiz
+      - run: pip install mkdocs-glightbox
       - run: mkdocs gh-deploy --force
