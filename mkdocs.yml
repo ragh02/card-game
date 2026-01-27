@@ -3,11 +3,11 @@ site_name: Card Game Design
 site_url: https://example.com
 site_author: anonymous
 
-# # Repository
-# repo_name: scratch-docs
-# repo_url: https://github.com/ragh02/scratch-docs
+# Repository
+repo_name: card-game
+repo_url: https://github.com/ragh02/card-game
 
-Navigation:
+
 nav:
 
   - Home: index.md
@@ -17,8 +17,6 @@ nav:
     - Data design: plan/data.md
     - Program structure: plan/structure.md
     - Robust programs: plan/robust.md
-  - Blog:
-    - Blog: blog/index.md
 
 
      
@@ -145,7 +143,6 @@ markdown_extensions:
       pygments_lang_class: true
       anchor_linenums: true
       line_spans: __span
-      pygments_lang_class: true
   - pymdownx.inlinehilite
 
 

@@ -11,6 +11,7 @@ import sys
 import yaml
 import hashlib
 import time
+from getpass import getpass
 
 # Initialise the SQLite DB and create tables if they don't exist
 def init_db(db_name):
@@ -63,10 +64,15 @@ def load_config_file(filepath):
 def create_config_file(filepath="config.yml", config_dict=None):
     if config_dict is None:
         config_dict = {
-            "version": 1,
+            "version": 2,
             "database_file": "card_game.db",
             "admin": "admin",
-            "admin_pw": "12345"
+            "admin_pw": "12345",
+            "auto_mode": "False",
+            "bypass_auth": "False",
+            "wait_x_seconds": "0",
+            "auto_play": "False",
+            "required_two_names": "False"
         }
     with open(filepath, "w") as f:
         yaml.dump(config_dict, f)
@@ -217,19 +223,31 @@ def do_colour_formatting(card):
 
 # MAIN PROGRAM
 if __name__ == "__main__":
+    if os.path.exists("config.yml"):
+        config = load_config_file("config.yml")
+        if config["version"] != 2:
+            sys.exit("Your config is outdated! Please delete it and try again")
+    else:
+        create_config_file()
+        sys.exit("New config file created. Please edit it and try again.")
 
     # TEMP CONFIG - FOR DEV USE ONLY
-    auto_mode = True
-    bypass_auth = False
-    wait_x_seconds = 0
-    auto_play = False
-    require_two_names = False
+    # auto_mode = True
+    # bypass_auth = False
+    # wait_x_seconds = 0
+    # auto_play = False
+    # require_two_names = False
 
     # Start by initialising the configuration file
     config = load_config_file("config.yml")
     db_name = config["database_file"]
     admin_user = config["admin"]
     admin_pw = config["admin_pw"]
+    auto_mode = config["auto_mode"]
+    bypass_auth = config["bypass_auth"]
+    wait_x_seconds = config["wait_x_seconds"]
+    auto_play = config["auto_play"]
+    required_two_names = config["required_two_names"]
     init_db(db_name)
 
     # Print welcome message
@@ -274,7 +292,7 @@ if __name__ == "__main__":
     do_new_lines()
 
     # Authorise user 1
-    if not bypass_auth:
+    if bypass_auth != "True":
         user_1 = do_authentication("Welcome Player 1, please enter your username below:", db_name, admin_pw, admin_user, [])
         print()
         os.system("clear")
@@ -307,14 +325,26 @@ if __name__ == "__main__":
             print("------------------------")
             print()
     else:
-        user_1 = "Test User A"
-        user_2 = "Test User B"
+        user_1 = f"TestA-{random.randint(100,999)}"
+        user_2 = f"TestB-{random.randint(100,999)}"
 
 
 
     card1 = Card(1,1)
     # print(compare_cards(card1,card1))
     deck = create_deck()
+    # print(deck)
+    # distribute decks
+    d1 = []
+    d2 = []
+    while len(deck) != 0:
+        deck,d1a = draw_card(deck)
+        deck,d2a = draw_card(deck)
+        d1.append(d1a)
+        d2.append(d2a)
+
+    # print(f"{d1} {d2}")
+    # sys.exit(0)
 
 
 
@@ -323,24 +353,74 @@ if __name__ == "__main__":
     p2_cards = 0
     player_names = [user_1, user_2]
     round = 0
-    while len(deck) > 1:
+    for i in range(15):
         round += 1
-        if not auto_mode:
+        if True:
             print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
-            print(f"{user_1}'s turn!")
-            input("Press ENTER to draw a card:")
-            deck,a = draw_card(deck)
-            print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
-            input("Press ENTER to continue...")
+            print(f"{col.bold}{user_1}{col.end}'s turn!")
+            print(f"Select ONE card:")
+            for i in range((len(d1) if len(d1) <= 3 else 3)):
+                print(f"{i+1}. {do_colour_formatting(d1[i])}{d1[i]}{col.end}")
+            try:
+                c = getpass(f"Type the {col.bold}NUMBER{col.end} of the card you want to draw!")
+            except KeyboardInterrupt:
+                sys.exit(f"{col.red}Game cancelled.")
+            a = 0
+            try:
+                c = int(c)
+                if c > 0 and c < 4:
+                    c -= 1
+                    a = d1[c]
+                    # print(a)
+                    d1.pop(c)
+                else:
+                    print("Since your choice was invalid, a random card was selected.")
+                    c = random.randint(0, 2)
+                    a = d1[c]
+                    d1.pop(c)
+            except ValueError:
+                print("Since your choice was invalid, a random card was selected.")
+                c = random.randint(0, 2)
+                a = d1[c]
+                d1.pop(c)
+
+            # print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
+            print("You took a card.")
+            # input("Press ENTER to continue...")
 
             # do_new_lines()
+            # PLAYER 2
             os.system("clear")
             print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
-            print(f"{user_2}'s turn!")
-            input("Press ENTER to draw a card:")
-            deck, b = draw_card(deck)
-            print(f"You took a{do_colour_formatting(b)}{col.bold} {b}{col.end}")
-            input("Press ENTER to continue...")
+            print(f"{col.bold}{user_2}{col.end}'s turn!")
+            print(f"Select ONE card:")
+            for i in range((len(d2) if len(d2) <= 3 else 3)):
+                print(f"{i + 1}. {do_colour_formatting(d2[i])}{d2[i]}{col.end}")
+            try:
+                c = getpass(f"Type the {col.bold}NUMBER{col.end} of the card you want to draw!")
+            except KeyboardInterrupt:
+                sys.exit(f"{col.red}Game cancelled.")
+            b = 0
+            try:
+                c = int(c)
+                if c > 0 and c < 4:
+                    c -= 1
+                    b = d2[c]
+                    # print(a)
+                    d2.pop(c)
+                else:
+                    print("Since your choice was invalid, a random card was selected.")
+                    c = random.randint(0, 2)
+                    b = d2[c]
+                    d2.pop(c)
+            except ValueError:
+                print("Since your choice was invalid, a random card was selected.")
+                c = random.randint(0,2)
+                b = d2[c]
+                d2.pop(c)
+
+            print(f"You took a card.")
+            # input("Press ENTER to continue...")
 
             do_new_lines()
         else:
@@ -373,28 +453,38 @@ if __name__ == "__main__":
                 do_new_lines()
             else:
                 print("Cards draw automatically!")
-                time.sleep(wait_x_seconds)
+                # time.sleep(wait_x_seconds)
             print("===== RESULTS =====")
             deck,a = draw_card(deck)
             deck, b = draw_card(deck)
         result = compare_cards(a, b)
+        # print(f"Player 1 took a {do_colour_formatting(a)}{col.bold} {a}{col.end}")
+        # print(f"Player 2 took a {do_colour_formatting(b)}{col.bold} {b}{col.end}")
+        print()
+        print(f"{col.bold}===== RESULTS ====={col.end}")
 
         if result == 0:
             print(f"{user_1}'s card: {do_colour_formatting(a)}{col.green}{col.bold}{a}{col.end}")
             print(f"{user_2}'s card: {do_colour_formatting(b)}{col.red}{col.bold}{b}{col.end}")
             print(f"{col.blue}{col.bold}{player_names[result]} wins and takes both cards.{col.end}")
             print()
-            p1_cards += 2
-            print(f"{user_1}'s cards: {col.green}{p1_cards} (+2) {col.end}")
-            print(f"{user_2}'s cards: {col.red}{p2_cards}  {col.end}")
+            d1.insert((len(d1)-1),a)
+            d1.insert((len(d1)-1),b)
+            p1_cards = len(d1)
+            p2_cards = len(d2)
+            print(f"{user_1}'s cards: {col.green}{p1_cards} (+1) {col.end}")
+            print(f"{user_2}'s cards: {col.red}{p2_cards} (-1){col.end}")
         else:
             print(f"{user_1}'s card: {do_colour_formatting(a)}{col.red}{col.bold}{a}{col.end}")
             print(f"{user_2}'s card: {do_colour_formatting(b)}{col.green}{col.bold}{b}{col.end}")
             print(f"{col.blue}{col.bold}{player_names[result]} wins and takes both cards.{col.end}")
             print()
-            p2_cards += 2
-            print(f"{user_1}'s cards: {col.red}{p1_cards} {col.end}")
-            print(f"{user_2}'s cards: {col.green}{p2_cards} (+2) {col.end}")
+            d2.insert((len(d2) - 1), a)
+            d2.insert((len(d2) - 1), b)
+            p1_cards = len(d1)
+            p2_cards = len(d2)
+            print(f"{user_1}'s cards: {col.red}{p1_cards} (-1){col.end}")
+            print(f"{user_2}'s cards: {col.green}{p2_cards} (+1) {col.end}")
 
         # print(f"{col.bold}Next round starts in {wait_x_seconds} seconds. {col.end}")
 

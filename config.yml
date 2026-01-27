@@ -1,0 +1,9 @@
+admin: admin
+admin_pw: '12345'
+auto_mode: 'False'
+auto_play: 'False'
+bypass_auth: 'False'
+database_file: card_game.db
+required_two_names: 'False'
+version: 2
+wait_x_seconds: 0
