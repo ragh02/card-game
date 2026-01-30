@@ -1,16 +1,15 @@
 # Copyright (c) 2026 Harish Raghavan. All rights reserved
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# This is NOT an open-source program!
 
 # Two-player card game
 import sqlite3
 import random
-from warnings import warn
 from libs.col import *
 import os
 import sys
 import yaml
 import hashlib
-import time
 from getpass import getpass
 
 # Initialise the SQLite DB and create tables if they don't exist
@@ -64,15 +63,14 @@ def load_config_file(filepath):
 def create_config_file(filepath="config.yml", config_dict=None):
     if config_dict is None:
         config_dict = {
-            "version": 2,
+            "version": 5,
             "database_file": "card_game.db",
             "admin": "admin",
             "admin_pw": "12345",
-            "auto_mode": "False",
-            "bypass_auth": "False",
-            "wait_x_seconds": "0",
-            "auto_play": "False",
-            "required_two_names": "False"
+            "bypass_auth": False,
+            "guest_username": "parabola",
+            "leaderboard": True,
+            "guests": True
         }
     with open(filepath, "w") as f:
         yaml.dump(config_dict, f)
@@ -92,17 +90,28 @@ def add_user(username, password, db_file):
 
 
 # THI SECTION DEFINES FUNCTIONS MANAGING THE AUTHENTICATION SYSTEM
-def do_authentication(user,db, admin_pw, admin_user, forbidden):
+def do_authentication(user,db, admin_pw, admin_user, forbidden, guests):
     print(f"{col.bold}{user}{col.end}")
-    username = input("--> ")
+    try:
+        username = input("--> ")
+    except KeyboardInterrupt:
+        sys.exit(f"{col.red}Game cancelled!")
+    if (username == "guest") and guests:
+        return "guest"
     print()
     print(f"{col.bold}Please enter your password.{col.end}")
-    password = input(f"{col.end}--> ")
+    try:
+        password = getpass(f"{col.end}--> ")
+    except KeyboardInterrupt:
+        sys.exit(f"{col.red}Game cancelled!")
     if username in forbidden:
         return False
     if password == admin_pw and username == admin_user:
         print(f"Admin mode enabled. Type command 1 to add a user, 2 to remove a user and 3 to see all users or 4 to reset the leaderboard")
-        choice = input("--> ")
+        try:
+            choice = input("--> ")
+        except KeyboardInterrupt:
+            sys.exit(f"{col.red}Game cancelled!")
         if choice == "1":
             username = input("Username: ")
             password = input("Password: ")
@@ -220,16 +229,18 @@ def do_colour_formatting(card):
         return col.end
 
 
+# FOR DEVELOPER USE ONLY
+required_config_version = 5
 
 # MAIN PROGRAM
 if __name__ == "__main__":
     if os.path.exists("config.yml"):
         config = load_config_file("config.yml")
-        if config["version"] != 2:
-            sys.exit("Your config is outdated! Please delete it and try again")
+        if config["version"] != required_config_version:
+            sys.exit(f"{col.red}Your config is outdated! Please delete it and try again")
     else:
         create_config_file()
-        sys.exit("New config file created. Please edit it and try again.")
+        sys.exit(f"{col.green}New config file created. Please edit it and try again.")
 
     # TEMP CONFIG - FOR DEV USE ONLY
     # auto_mode = True
@@ -243,20 +254,21 @@ if __name__ == "__main__":
     db_name = config["database_file"]
     admin_user = config["admin"]
     admin_pw = config["admin_pw"]
-    auto_mode = config["auto_mode"]
     bypass_auth = config["bypass_auth"]
-    wait_x_seconds = config["wait_x_seconds"]
-    auto_play = config["auto_play"]
-    required_two_names = config["required_two_names"]
+    guest_username = config["guest_username"]
+    leaderboard = config["leaderboard"]
+    guests = True
     init_db(db_name)
 
     # Print welcome message
     print("===============================================")
     print(f"{col.bold}Mr Raghavan's {col.blue}FANTASTIC{col.end}{col.bold} two-player card game! {col.end}")
     print(f"{col.bold}==================== RULES ====================")
-    print(f"{col.end}Each player takes turns in taking the top card from")
-    print("the deck. Then, the cards are compared using the")
-    print("following rules. If the colours are different:")
+    print(f"{col.end}Each player is dealt 15 cards each.")
+    print("On every turn, both players pick one of the 3")
+    print("top cards in their deck. They are then")
+    print("compared. If the colours are different,")
+    print("The following rules are used:")
     print("* Red beats black")
     print("* Yellow beats red")
     print("* Black beats yellow")
@@ -271,66 +283,85 @@ if __name__ == "__main__":
         sys.exit(f"{col.red}Game cancelled.")
 
     do_new_lines()
+    if leaderboard:
 
-    # top 5 users
-    print(f"================= LEADERBOARD =================")
-    lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5", (), db_name)
-    c = 1
-    for i in lb:
-        print(f"{c}. {i[0]} - {i[1]} cards")
-        c += 1
+        # top 5 users
+        print(f"================= LEADERBOARD =================")
+        lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5", (), db_name)
+        c = 1
+        for i in lb:
+            print(f"{c}. {i[0]} - {i[1]} cards")
+            c += 1
+        if len(lb) == 0:
+            print(f"Nothing in the leaderboard!")
 
 
-    # press enter
-    print(f"===============================================")
-    try:
-        input("Press ENTER to log in...")
-    except KeyboardInterrupt:
-        sys.exit(f"{col.red}Game cancelled.")
-    do_new_lines()
-    do_new_lines()
-    do_new_lines()
+        # press enter
+        print(f"===============================================")
+        try:
+            input("Press ENTER to log in...")
+        except KeyboardInterrupt:
+            sys.exit(f"{col.red}Game cancelled.")
+        do_new_lines()
+        do_new_lines()
+        do_new_lines()
 
     # Authorise user 1
-    if bypass_auth != "True":
-        user_1 = do_authentication("Welcome Player 1, please enter your username below:", db_name, admin_pw, admin_user, [])
+
+    if not bypass_auth:
+
+        user_1 = do_authentication("Welcome Player 1, please enter your username below. To log in as a guest, type 'guest'", db_name, admin_pw, admin_user,[],guests)
+
         print()
         os.system("clear")
         # print("------------------------")
         attempts = 5
-        while not user_1:
+        while not user_1 and (user_1 != "guest" and guests):
             os.system("clear")
             attempts -= 1
             if attempts < 1:
                 sys.exit("Sorry, you do not have permission to run this program!")
-            user_1 = do_authentication(f"{col.red}({attempts} attempts left) Try again. Username:{col.end}",db_name,admin_pw,admin_user, [])
+            user_1 = do_authentication(f"{col.red}({attempts} attempts left) Try again. Username:{col.end}",db_name,admin_pw,admin_user, [],guests)
             print()
             # print("------------------------")
             print()
+        if user_1 == "guest" and guests:
+            user_1 = f"{guest_username}-{random.randint(100,999)}-A"
 
         # Authorise user 2
-        user_2 = do_authentication("Welcome Player 2, please enter your username below:", db_name, admin_pw, admin_user, [user_1])
+        if guests:
+            print(f"{col.green}You are logged in as {user_1}{col.end}")
+            user_2 = do_authentication(
+                "Welcome Player 2, please enter your username below. To log in as a guest, type 'guest'", db_name,
+                admin_pw,
+                admin_user, [user_1], True)
+        else:
+            user_2 = do_authentication("Welcome Player 2, please enter your username below:", db_name, admin_pw,
+                                       admin_user, [user_1], False)
         print()
         os.system("clear")
         # print("------------------------")
         attempts = 5
-        while not user_2:
+        while not user_2 and (user_2 != "guest" and guests):
             os.system("clear")
             attempts -= 1
             if attempts < 1:
                 sys.exit("Sorry, you do not have permission to run this program!")
             user_2 = do_authentication(f"{col.red}({attempts} attempts left) Try again. Username:{col.end}", db_name, admin_pw,
-                                       admin_user,[user_1])
+                                       admin_user,[user_1], guests)
             print()
             print("------------------------")
             print()
+        if user_2 == "guest" and guests:
+            user_2 = f"{guest_username}-{random.randint(100,999)}-B"
     else:
-        user_1 = f"TestA-{random.randint(100,999)}"
-        user_2 = f"TestB-{random.randint(100,999)}"
+        user_1 = f"{guest_username}-{random.randint(100,999)}-A"
+        user_2 = f"{guest_username}-{random.randint(100,999)}-B"
 
 
 
     card1 = Card(1,1)
+    print(f"{col.green}You are logged in as {user_2}{col.end}")
     # print(compare_cards(card1,card1))
     deck = create_deck()
     # print(deck)
@@ -354,114 +385,95 @@ if __name__ == "__main__":
     player_names = [user_1, user_2]
     round = 0
     for i in range(15):
+        p1_invalid = False
+        p2_invalid = False
         round += 1
-        if True:
-            print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
-            print(f"{col.bold}{user_1}{col.end}'s turn!")
-            print(f"Select ONE card:")
-            for i in range((len(d1) if len(d1) <= 3 else 3)):
-                print(f"{i+1}. {do_colour_formatting(d1[i])}{d1[i]}{col.end}")
-            try:
-                c = getpass(f"Type the {col.bold}NUMBER{col.end} of the card you want to draw!")
-            except KeyboardInterrupt:
-                sys.exit(f"{col.red}Game cancelled.")
-            a = 0
-            try:
-                c = int(c)
-                if c > 0 and c < 4:
-                    c -= 1
-                    a = d1[c]
-                    # print(a)
-                    d1.pop(c)
-                else:
-                    print("Since your choice was invalid, a random card was selected.")
-                    c = random.randint(0, 2)
-                    a = d1[c]
-                    d1.pop(c)
-            except ValueError:
+
+        print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
+        print(f"{col.bold}{col.blue}{user_1}{col.end}'s turn!")
+        print(f"Select ONE card:")
+        for i in range((len(d1) if len(d1) <= 3 else 3)):
+            print(f"{i+1}. {do_colour_formatting(d1[i])}{d1[i]}{col.end}")
+        try:
+            print(f"Type the {col.bold}NUMBER{col.end} of the card you want to draw!")
+            print(f"(e.g. 1, 2, 3). Please note that you won't see the number you typed.")
+            c = getpass("-->")
+        except KeyboardInterrupt:
+            sys.exit(f"{col.red}Game cancelled. The current game was NOT saved!")
+        a = 0
+        try:
+            c = int(c)
+            if c > 0 and c < 4:
+                c -= 1
+                a = d1[c]
+                # print(a)
+                d1.pop(c)
+            else:
+                p1_invalid = True
                 print("Since your choice was invalid, a random card was selected.")
                 c = random.randint(0, 2)
                 a = d1[c]
                 d1.pop(c)
+        except ValueError:
+            p1_invalid = True
+            print("Since your choice was invalid, a random card was selected.")
+            c = random.randint(0, 2)
+            a = d1[c]
+            d1.pop(c)
 
-            # print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
-            print("You took a card.")
-            # input("Press ENTER to continue...")
+        # print(f"You took a{do_colour_formatting(a)}{col.bold} {a}{col.end}")
+        print("You took a card.")
+        # input("Press ENTER to continue...")
 
-            # do_new_lines()
-            # PLAYER 2
-            os.system("clear")
-            print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
-            print(f"{col.bold}{user_2}{col.end}'s turn!")
-            print(f"Select ONE card:")
-            for i in range((len(d2) if len(d2) <= 3 else 3)):
-                print(f"{i + 1}. {do_colour_formatting(d2[i])}{d2[i]}{col.end}")
-            try:
-                c = getpass(f"Type the {col.bold}NUMBER{col.end} of the card you want to draw!")
-            except KeyboardInterrupt:
-                sys.exit(f"{col.red}Game cancelled.")
-            b = 0
-            try:
-                c = int(c)
-                if c > 0 and c < 4:
-                    c -= 1
-                    b = d2[c]
-                    # print(a)
-                    d2.pop(c)
-                else:
-                    print("Since your choice was invalid, a random card was selected.")
-                    c = random.randint(0, 2)
-                    b = d2[c]
-                    d2.pop(c)
-            except ValueError:
+        # do_new_lines()
+        # PLAYER 2
+        os.system("clear")
+        print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
+        if p1_invalid:
+            print(f"{col.red}{user_1} didn't select a valid option, so a random card was played instead.{col.end}")
+        print(f"{col.bold}{col.blue}{user_2}{col.end}'s turn!")
+        print(f"Select ONE card:")
+        for i in range((len(d2) if len(d2) <= 3 else 3)):
+            print(f"{i + 1}. {do_colour_formatting(d2[i])}{d2[i]}{col.end}")
+        try:
+            print(f"Type the {col.bold}NUMBER{col.end} of the card you want to draw!")
+            print(f"(e.g. 1, 2, 3). Please note that you won't see the number you typed.")
+            c = getpass("-->")
+        except KeyboardInterrupt:
+            sys.exit(f"{col.red}Game cancelled. The current game was NOT saved!")
+        b = 0
+        try:
+            c = int(c)
+            if c > 0 and c < 4:
+                c -= 1
+                b = d2[c]
+                # print(a)
+                d2.pop(c)
+            else:
+                p2_invalid = True
                 print("Since your choice was invalid, a random card was selected.")
-                c = random.randint(0,2)
+                c = random.randint(0, 2)
                 b = d2[c]
                 d2.pop(c)
+        except ValueError:
+            p2_invalid = True
+            print("Since your choice was invalid, a random card was selected.")
+            c = random.randint(0,2)
+            b = d2[c]
+            d2.pop(c)
 
-            print(f"You took a card.")
-            # input("Press ENTER to continue...")
+        print(f"You took a card.")
+        # input("Press ENTER to continue...")
 
-            do_new_lines()
-        else:
-            # New refined UI with less user requirements
-            print(f"{col.bold}===== ROUND {round}/15 ====={col.end}")
-            if p1_cards > p2_cards:
-                print(f"{col.green}{user_1}'s cards: {p1_cards}  {col.end}")
-                print(f"{col.red}{user_2}'s cards: {p2_cards}  {col.end}")
-            elif p2_cards > p1_cards:
-                print(f"{col.red}{user_1}'s cards: {p1_cards}  {col.end}")
-                print(f"{col.green}{user_2}'s cards: {p2_cards}  {col.end}")
-            else:
-                print(f"{user_1}'s cards: {p1_cards}  {col.end}")
-                print(f"{user_2}'s cards: {p2_cards}  {col.end}")
+        do_new_lines()
 
-            if not auto_play:
-                if require_two_names:
-                    try:
-                        input("Player 1: Press ENTER to draw cards:")
-                        input("Player 2: Press ENTER to draw cards:")
-                        print("Please wait...")
-                    except KeyboardInterrupt:
-                        sys.exit(f"Exited program. The current game has NOT been saved.")
-                else:
-                    try:
-                        input("Press ENTER to draw cards:")
-                        print("Please wait...")
-                    except KeyboardInterrupt:
-                        sys.exit(f"Exited program. The current game has NOT been saved.")
-                do_new_lines()
-            else:
-                print("Cards draw automatically!")
-                # time.sleep(wait_x_seconds)
-            print("===== RESULTS =====")
-            deck,a = draw_card(deck)
-            deck, b = draw_card(deck)
         result = compare_cards(a, b)
         # print(f"Player 1 took a {do_colour_formatting(a)}{col.bold} {a}{col.end}")
         # print(f"Player 2 took a {do_colour_formatting(b)}{col.bold} {b}{col.end}")
         print()
         print(f"{col.bold}===== RESULTS ====={col.end}")
+        if p2_invalid:
+            print(f"{col.red}{user_2} didn't select a valid option, so a random card was played instead.{col.end}")
 
         if result == 0:
             print(f"{user_1}'s card: {do_colour_formatting(a)}{col.green}{col.bold}{a}{col.end}")
@@ -508,19 +520,23 @@ if __name__ == "__main__":
         print(f"{user_2}'s cards: {col.green}{p2_cards} {col.end}")
         print(f"{col.bold}{col.blue}{user_2} wins! {col.end}")
 
-
-    # Save data to the leaderboard
-    # (remove print statements in final program)
-    # print(f"Player {user_1} finished game with {p1_cards} cards")
-    # print(f"Player {user_2} finished game with {p2_cards} cards")
-    # print("Saving now.")
-    add_lb_entry(user_1,p1_cards,db_name)
-    add_lb_entry(user_2, p2_cards, db_name)
-    # print("All done. Hopefully no tracebacks show up.")
-    input("Press ENTER for the leaderboard")
-    lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5",(),db_name)
-    c = 1
-    for i in lb:
-        print(f"{c}. {i[0]} - {i[1]} cards")
-        c += 1
+    if leaderboard:
+        # Save data to the leaderboard
+        # (remove print statements in final program)
+        # print(f"Player {user_1} finished game with {p1_cards} cards")
+        # print(f"Player {user_2} finished game with {p2_cards} cards")
+        # print("Saving now.")
+        add_lb_entry(user_1,p1_cards,db_name)
+        add_lb_entry(user_2, p2_cards, db_name)
+        # print("All done. Hopefully no tracebacks show up.")
+        print()
+        print("Leaderboard:")
+        lb = execute_query("SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5",(),db_name)
+        c = 1
+        for i in lb:
+            if i[0] == user_1 or i[0] == user_2:
+                print(f"{col.green}{c}. {i[0]} - {i[1]} cards <--{col.end}")
+            else:
+                print(f"{c}. {i[0]} - {i[1]} cards")
+            c += 1
 
